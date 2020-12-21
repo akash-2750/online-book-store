@@ -1,0 +1,152 @@
+public void Connect()
+    {
+        try {
+            Class.forName("com.mysql.jdbc.Driver"); // Register the mysql driver
+            con = DriverManager.getConnection("jdbc:mysql://localhost/bookshop","root","");    
+        } catch (ClassNotFoundException ex) {
+            ex.printStackTrace();
+        } catch (SQLException ex) {
+           ex.printStackTrace();
+        }
+    }
+
+
+ public BookShop() {
+        initComponents();
+        Connect();
+    }
+
+    private void txtbcodeKeyPressed(java.awt.event.KeyEvent evt) 
+{                                    
+        if(evt.getKeyCode() == KeyEvent.VK_ENTER)
+        {
+            try {
+                String bcode = txtbcode.getText(); 
+                pst = con.prepareStatement("select * from book where id = ?");
+                pst.setString(1, bcode);
+                rs = pst.executeQuery();
+                
+               if(rs.next() == false)
+               {
+                   JOptionPane.showMessageDialog(this, "Book Code not Found");
+               }
+               else
+               {
+                   String bname = rs.getString("bname");
+                   txtbname.setText(bname.trim());
+                   String price = rs.getString("price");
+                   txtprice.setText(price.trim()); 
+                   txtqty.requestFocus();
+               }
+  
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
+        }
+
+    }
+
+
+private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) 
+{                                         
+        int price = Integer.parseInt(txtprice.getText());
+        int qty = Integer.parseInt(txtqty.getValue().toString());
+        int tot = price * qty;
+        df = (DefaultTableModel)jTable3.getModel();
+
+        df.addRow(new Object[]
+        {
+            txtbname.getText(),
+            txtprice.getText(),
+            txtqty.getValue().toString(),
+            tot
+        });
+        int sum = 0;
+        for(int i=0; i<jTable3.getRowCount(); i++)
+        {
+            sum = sum + Integer.parseInt(jTable3.getValueAt(i, 3).toString());
+        }
+            txttcost.setText(String.valueOf(sum));
+            txtbcode.setText("");
+            txtbname.setText("");
+            txtprice.setText("");
+            txtqty.setValue(0);
+            txtbcode.requestFocus();
+    }
+
+
+
+
+
+    public void sales()
+    {
+        String totalcost = txttcost.getText();
+        String pay = txtpay.getText();
+        String bal = txtbal.getText();
+        int lastid =0;
+        try {
+             
+            String query = "insert into sales(subtotal,pay,bal)values(?,?,?)";
+            pst = con.prepareStatement(query,Statement.RETURN_GENERATED_KEYS);
+            pst.setString(1, totalcost);
+            pst.setString(2, pay); 
+            pst.setString(3, bal);
+            pst.executeUpdate();
+            rs = pst.getGeneratedKeys();
+            if(rs.next())
+            {
+                lastid = rs.getInt(1);
+            }
+              int rows = jTable3.getRowCount();
+              
+              String query1 = "insert into sales_product(sales_id,bname,price,qty,total)values(?,?,?,?,?)";
+              pst1 = con.prepareStatement(query1);
+              
+              String bname ="";
+              String price;
+              String qty;
+              int total = 0;
+              
+              for(int i=0; i<jTable3.getRowCount(); i++)
+              {
+                   bname = (String)jTable3.getValueAt(i, 0);
+                   price = (String)jTable3.getValueAt(i, 1);
+                   qty = (String)jTable3.getValueAt(i, 2);
+                   total = (int)jTable3.getValueAt(i, 3);
+                    pst1.setInt(1, lastid);
+                    pst1.setString(2, bname);
+                    pst1.setString(3, price);
+                     pst1.setString(4, qty);
+                     pst1.setInt(5, total);
+                     pst1.executeUpdate();
+              }
+              
+              JOptionPane.showMessageDialog(this, "Sales Completedddddddddd");
+              
+              HashMap a = new HashMap();
+              a.put("invo", lastid);
+
+            try {
+                JasperDesign jdesign = JRXmlLoader.load("C:\\Users\\kobinath\\Documents\\NetBeansProjects\\BookShopInventory\\src\\BookShop\\report1.jrxml");
+                JasperReport jreport = JasperCompileManager.compileReport(jdesign);
+                
+                JasperPrint jprint = JasperFillManager.fillReport(jreport, a,con);
+                
+               JasperViewer.viewReport(jprint);
+
+            } catch (JRException ex) {
+               ex.printStackTrace();
+            }
+
+        } catch (SQLException ex) {
+           ex.printStackTrace();
+        }
+
+    }
+
+
+       int pay = Integer.parseInt(txtpay.getText());
+       int totalcost = Integer.parseInt(txttcost.getText());          
+       int bal = pay - totalcost;   
+       txtbal.setText(String.valueOf(bal));
+       sales();
